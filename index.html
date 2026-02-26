@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Costa Rica Abenteuer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --parchment: #e8dcc4;
+      --parchment-dark: #d4c4a8;
+      --ink: #2c1810;
+      --ink-faded: #5c4033;
+      --accent-gold: #b8860b;
+      --accent-rust: #8b4513;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Crimson Text', Georgia, serif;
+      background: #1a1510;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+    }
+
+    .map-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      /* Leichter Sepia – Wasser bleibt blau, Land bekommt Vintage-Touch */
+      filter: sepia(0.2) contrast(1.1) saturate(0.9) brightness(1.02);
+    }
+
+    /* Parchment overlay frame - Uncharted Papier-Look */
+    .map-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      background: 
+        radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(232, 220, 196, 0.12) 100%),
+        linear-gradient(180deg, rgba(139, 69, 19, 0.02) 0%, transparent 50%, rgba(139, 69, 19, 0.02) 100%);
+      z-index: 1000;
+    }
+
+    .map-frame::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+      opacity: 0.8;
+    }
+
+    /* Title & branding */
+    .map-title {
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--ink);
+      text-shadow: 2px 2px 4px rgba(232, 220, 196, 0.8);
+      letter-spacing: 0.2em;
+      z-index: 1001;
+    }
+
+    .map-subtitle {
+      font-family: 'Crimson Text', serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      letter-spacing: 0.4em;
+      margin-top: 4px;
+      color: var(--ink-faded);
+    }
+
+    /* Compass */
+    .compass {
+      position: absolute;
+      bottom: 40px;
+      right: 40px;
+      width: 80px;
+      height: 80px;
+      background: var(--parchment);
+      border: 3px solid var(--accent-rust);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cinzel', serif;
+      font-size: 1.2rem;
+      color: var(--accent-rust);
+      box-shadow: inset 0 0 20px rgba(139, 69, 19, 0.2);
+      z-index: 1001;
+    }
+
+    .compass::before {
+      content: 'N';
+      position: absolute;
+      top: 4px;
+      font-weight: 700;
+    }
+
+    /* Legend */
+    .legend {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      background: rgba(232, 220, 196, 0.95);
+      padding: 12px 20px;
+      border: 2px solid var(--accent-rust);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      z-index: 1001;
+    }
+
+    .legend-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .legend-roadtrip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .legend-car-img {
+      width: 72px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--accent-rust);
+    }
+
+    .legend-sub {
+      font-size: 0.8rem;
+      color: var(--ink-faded);
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    /* Custom marker styling */
+    .custom-marker {
+      background: none !important;
+      border: none !important;
+    }
+
+    .marker-pin {
+      width: 36px;
+      height: 36px;
+      border-radius: 50% 50% 50% 0;
+      background: var(--accent-rust);
+      border: 3px solid var(--ink);
+      transform: rotate(-45deg);
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .marker-pin::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      margin: 8px 0 0 8px;
+      background: var(--parchment);
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .marker-pin.day-current {
+      background: var(--accent-gold);
+    }
+
+    /* Leaflet popup customization */
+    .leaflet-popup {
+      z-index: 1100 !important;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--parchment);
+      border: 3px solid var(--accent-rust);
+      border-radius: 4px;
+      box-shadow: 4px 4px 20px rgba(0,0,0,0.4);
+      font-family: 'Crimson Text', serif;
+      width: 331px !important;
+      min-width: 331px;
+      max-width: min(360px, calc(100vw - 32px));
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--parchment);
+      border: 2px solid var(--accent-rust);
+    }
+
+    .leaflet-popup-content {
+      margin: 0;
+      padding: 0;
+      width: 331px !important;
+      min-width: 331px !important;
+    }
+
+    .popup-content {
+      padding: 16px;
+      min-width: 299px;
+    }
+
+    .popup-day {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--accent-rust);
+      margin-bottom: 8px;
+      letter-spacing: 0.1em;
+    }
+
+    .popup-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+
+    .popup-image-wrap {
+      position: relative;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--parchment-dark);
+    }
+
+    .popup-image-main {
+      width: 100%;
+      height: 188px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .popup-image-accommodation {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 85px;
+      height: 85px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 2px solid var(--parchment);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .popup-distance {
+      font-size: 0.9rem;
+      color: var(--ink-faded);
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+
+    .popup-activities {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .popup-content-input {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px 12px;
+      font-family: 'Crimson Text', serif;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      border: 1px solid var(--parchment-dark);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.5);
+      color: var(--ink);
+      resize: vertical;
+    }
+
+    .popup-content-input:focus {
+      outline: none;
+      border-color: var(--accent-rust);
+    }
+
+    .popup-content-section {
+      margin-top: 12px;
+    }
+
+    .popup-saved-hint {
+      font-size: 0.75rem;
+      color: var(--ink-faded);
+      margin-top: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .popup-saved-hint.visible {
+      opacity: 1;
+    }
+
+    /* Route line styling */
+    .route-line {
+      stroke: var(--accent-rust);
+      stroke-width: 3;
+      stroke-dasharray: 10, 10;
+      fill: none;
+      animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -20; }
+    }
+
+    /* Touch-freundliche Marker auf allen Geräten */
+    @media (hover: none) {
+      .marker-pin {
+        width: 40px;
+        height: 40px;
+      }
+
+      .marker-pin::after {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    /* Mobile – Tablet */
+    @media (max-width: 768px) {
+      .map-title {
+        font-size: 1.5rem;
+        letter-spacing: 0.08em;
+        top: max(16px, env(safe-area-inset-top));
+        white-space: nowrap;
+      }
+
+      .map-subtitle {
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+      }
+
+      .legend {
+        bottom: max(16px, env(safe-area-inset-bottom));
+        left: max(12px, env(safe-area-inset-left));
+        right: max(12px, env(safe-area-inset-right));
+        padding: 10px 14px;
+        font-size: 0.75rem;
+      }
+
+      .legend-roadtrip {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      .legend-roadtrip > div {
+        order: 1;
+      }
+
+      .legend-roadtrip .legend-car-img {
+        order: 2;
+        width: 60px;
+        height: 40px;
+      }
+
+      .legend-title {
+        font-size: 0.9rem;
+      }
+
+      .leaflet-popup {
+        z-index: 1100 !important;
+      }
+
+      .leaflet-popup-content-wrapper {
+        width: 280px !important;
+        min-width: 280px;
+      }
+
+      .leaflet-popup-content {
+        width: auto !important;
+        min-width: unset !important;
+      }
+
+      .popup-content {
+        padding: 10px;
+        min-width: 248px;
+      }
+
+      .popup-day {
+        font-size: 0.95rem;
+      }
+
+      .popup-title {
+        font-size: 1rem;
+      }
+
+      .popup-image-main {
+        height: 100px;
+      }
+
+      .popup-image-accommodation {
+        width: 50px;
+        height: 50px;
+      }
+
+      .popup-content-input {
+        min-height: 80px;
+        font-size: 0.9rem;
+      }
+
+      .marker-pin {
+        width: 32px;
+        height: 32px;
+      }
+
+      .marker-pin::after {
+        width: 12px;
+        height: 12px;
+        margin: 6px 0 0 6px;
+      }
+    }
+
+    /* Mobile – Phone */
+    @media (max-width: 480px) {
+      .map-title {
+        font-size: clamp(1.15rem, 8vw, 1.5rem);
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      .legend {
+        padding: 8px 12px;
+        font-size: 0.7rem;
+      }
+
+      .legend-roadtrip {
+        flex-direction: row;
+        gap: 10px;
+        text-align: left;
+      }
+
+      .legend-roadtrip .legend-car-img {
+        order: 0;
+        width: 48px;
+        height: 32px;
+      }
+
+      .legend-title {
+        font-size: 0.8rem;
+      }
+
+      .legend-roadtrip > div {
+        order: 0;
+        min-width: 0;
+      }
+
+      .legend-roadtrip > div:last-child > div:last-child {
+        font-size: 0.65rem;
+        line-height: 1.3;
+      }
+
+      .leaflet-popup-content-wrapper {
+        width: 260px !important;
+        min-width: 260px;
+      }
+
+      .leaflet-popup-content {
+        width: auto !important;
+        min-width: unset !important;
+      }
+
+      .popup-content {
+        padding: 8px;
+        min-width: 228px;
+      }
+
+      .popup-day {
+        font-size: 0.85rem;
+      }
+
+      .popup-title {
+        font-size: 0.95rem;
+      }
+
+      .popup-image-main {
+        height: 85px;
+      }
+
+      .popup-image-accommodation {
+        width: 42px;
+        height: 42px;
+      }
+
+      .popup-content-input {
+        min-height: 70px;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="map-container">
+    <div id="map"></div>
+    <div class="map-frame"></div>
+    <h1 class="map-title">Unser Abenteuer ❤️
+      <div class="map-subtitle">COSTA RICA 13.03 - 24.03</div>
+    </h1>
+    <div class="legend">
+      <div class="legend-roadtrip">
+        <img src="images/bild-auto.jpg" alt="Unser Roadtrip-Auto" class="legend-car-img">
+        <div>
+          <div class="legend-title">Rundreise</div>
+          <div>San José → La Fortuna → Monteverde → Sámara</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const STORAGE_KEY = 'costa-rica-abenteuer-data';
+
+    // User-Daten laden
+    function loadUserData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : { content: {} };
+      } catch (e) {
+        return { content: {} };
+      }
+    }
+
+    function saveUserData(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn('localStorage nicht verfügbar (z.B. bei file://). Bitte lokalen Server nutzen: python3 -m http.server 8000');
+      }
+    }
+
+    let userData = loadUserData();
+    // Migration: alte Felder in content zusammenführen
+    if (userData.activities || userData.notes) {
+      userData.content = userData.content || {};
+      [1,2,3,4].forEach(id => {
+        const a = (userData.activities || {})[id];
+        const n = (userData.notes || {})[id];
+        if (a || n) userData.content[id] = [a, n].filter(Boolean).join('\n\n');
+      });
+      delete userData.activities;
+      delete userData.notes;
+      delete userData.links;
+      delete userData.cost;
+      saveUserData(userData);
+    }
+    // Migration: San José zusammengeführt – alte Notizen aus Eintrag 5 in 1 übernehmen
+    if (userData.content && userData.content[5]) {
+      userData.content[1] = [userData.content[1], userData.content[5]].filter(Boolean).join('\n\n');
+      delete userData.content[5];
+      saveUserData(userData);
+    }
+
+    // Reisedaten
+    const tripData = [
+      {
+        id: 1,
+        day: 'Tag 1 & 11',
+        title: 'San José',
+        subtitle: 'Ankunft und Abflug',
+        lat: 9.9281,
+        lng: -84.0907,
+        image: 'https://www.urlaubstracker.de/wp-content/uploads/2019/03/costa-rica-san-jose-oben.jpg',
+        activities: 'Tag 1: Mercado/Innenstadt oder Barrio Escalante (Essen, Vibe). Früh schlafen nach Ankunft.\nTag 11: Rückfahrt von Sámara (ca. 4–4,5h). Letzte Nacht vor Abreise.',
+        distance: '—',
+        links: [],
+        cost: 'Unterkunft: 128€ (2 Nächte)',
+        airbnb: 'https://www.airbnb.com/rooms/1345220312274547497',
+        accommodationImage: 'images/Unterkünfte/airbnb-san-jose.png'
+      },
+      {
+        id: 2,
+        day: 'Tag 2–4',
+        title: 'La Fortuna / Arenal',
+        subtitle: 'Vulkane & Dschungel',
+        lat: 10.4678,
+        lng: -84.6421,
+        image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/28/4a/ca/caption.jpg?w=1200&h=-1&s=1',
+        activities: 'Tag 2: Ankunft, Hot Springs am Abend. Tag 3: Hängebrücken, Regenwald-Walk, Night Walk. Tag 4: La Fortuna Waterfall.',
+        distance: 'Von San José: ca. 130 km (2–2,5h)',
+        links: [
+          { text: 'Airbnb', url: 'https://www.airbnb.com/rooms/1549668354400285667' }
+        ],
+        cost: 'Unterkunft: 261€ (3 Nächte)',
+        airbnb: 'https://www.airbnb.com/rooms/1549668354400285667',
+        accommodationImage: 'images/Unterkünfte/airbnb la fortuna.png'
+      },
+      {
+        id: 3,
+        day: 'Tag 5–6',
+        title: 'Monteverde / Santa Elena',
+        subtitle: 'Nebelwald & Abenteuer',
+        lat: 10.3025,
+        lng: -84.8199,
+        image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/33/fe/af/playa-samara.jpg?w=1200&h=700&s=1',
+        activities: 'Tag 5: Anreise, Sunset Viewpoints, Stellas Cafe. Tag 6: Hängebrücken & Zipline, Ficus la Raiz, Colibri Cafe.',
+        distance: 'Von La Fortuna: ca. 110 km (3–3,5h)',
+        links: [
+          { text: 'Zipline Tour', url: 'https://www.getyourguide.com/monteverde-l2135/monteverde-thrilling-zip-line-canopy-tour-t756509/' },
+          { text: 'Airbnb', url: 'https://www.airbnb.com/rooms/1025378960506411851' }
+        ],
+        cost: 'Unterkunft: 138€ (2 Nächte)',
+        airbnb: 'https://www.airbnb.com/rooms/1025378960506411851',
+        accommodationImage: 'images/Unterkünfte/airbnb-monteverde.png'
+      },
+      {
+        id: 4,
+        day: 'Tag 7–10',
+        title: 'Sámara / Playa Carrillo',
+        subtitle: 'Strand & Guanacaste',
+        lat: 9.8820,
+        lng: -85.5288,
+        image: 'https://puravidajr.com/wp-content/uploads/2025/05/SamaraBeach1.jpg',
+        activities: 'Tag 7: Anreise, Strand-Sonnenuntergang. Tag 8–10: Schwimmen, entspannen. Optional: Mangroven-/Kayak-Tour oder Schnorcheln.',
+        distance: 'Von Monteverde: ca. 150 km (2,5–3h)',
+        links: [
+          { text: 'Airbnb', url: 'https://www.airbnb.com/rooms/1087259001218606500' }
+        ],
+        cost: 'Unterkunft: 315€ (4 Nächte)',
+        airbnb: 'https://www.airbnb.com/rooms/1087259001218606500',
+        accommodationImage: 'images/Unterkünfte/airbnb-samara.png'
+      },
+    ];
+
+    // Ortsbilder (externe URLs)
+    const images = {
+      1: 'https://www.urlaubstracker.de/wp-content/uploads/2019/03/costa-rica-san-jose-oben.jpg',
+      2: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/28/4a/ca/caption.jpg?w=1200&h=-1&s=1',
+      3: 'https://wildfulstories.com/wp-content/uploads/2025/06/monteverde-costa-rica-1024x682.jpg',
+      4: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/33/fe/af/playa-samara.jpg?w=1200&h=700&s=1'
+    };
+    const imageFallbacks = {
+      1: 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=400&h=300&fit=crop',
+      2: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop',
+      3: 'https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?w=400&h=300&fit=crop',
+      4: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop'
+    };
+
+    // Karte initialisieren
+    const map = L.map('map', {
+      center: [10.0, -84.5],
+      zoom: 8,
+      zoomControl: false
+    });
+
+    // Vintage Map Tiles (CartoDB Voyager mit Sepia-Filter)
+    /* OSM: klares Blau für Wasser, Land hebt sich gut ab */
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(map);
+
+    // Zoom Control rechts
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    // Route zeichnen (inkl. Rückfahrt nach San José)
+    const routeCoords = [...tripData.map(d => [d.lat, d.lng]), [9.9281, -84.0907]];
+    const routeLine = L.polyline(routeCoords, {
+      color: '#8b4513',
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '12, 12'
+    }).addTo(map);
+
+    // Custom Icon
+    const createCustomIcon = (isCurrent) => ({
+      iconSize: [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor: [0, -36],
+      className: 'custom-marker',
+      html: `<div class="marker-pin ${isCurrent ? 'day-current' : ''}"></div>`
+    });
+
+    const LeafletDivIcon = L.divIcon;
+
+    // Hilfsfunktionen für Popup-HTML
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const escUrl = (s) => encodeURI(String(s ?? '')).replace(/"/g, '&quot;');
+
+    function buildPopupContent(place) {
+      const placeImg = images[place.id] || place.image;
+      const accomImg = place.accommodationImage;
+      const contentVal = (userData.content || {})[place.id] ?? place.activities;
+      return `
+        <div class="popup-content" data-place-id="${place.id}">
+          <div class="popup-day">${place.day}</div>
+          <div class="popup-title">${place.title}</div>
+          <div class="popup-image-wrap">
+            <img src="${escUrl(placeImg)}" alt="" class="popup-image-main" loading="lazy" title="Rechtsklick zum Speichern" onerror="this.onerror=null;this.src='${imageFallbacks[place.id]}'">
+            <img src="${escUrl(accomImg)}" alt="Unterkunft" class="popup-image-accommodation" loading="lazy" title="Rechtsklick zum Speichern">
+          </div>
+          ${place.distance !== '—' ? `<div class="popup-distance">📍 ${place.distance}</div>` : ''}
+          <div class="popup-content-section">
+            <textarea class="popup-content-input" data-place-id="${place.id}" placeholder="Aktivitäten, Notizen...">${esc(contentVal)}</textarea>
+            <div class="popup-saved-hint" data-place-id="${place.id}">✓ Gespeichert</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Marker und Popups (Inhalt bei jedem Öffnen neu laden, damit gespeicherte Notizen erscheinen)
+    tripData.forEach((place, i) => {
+      const marker = L.marker([place.lat, place.lng], {
+        icon: LeafletDivIcon(createCustomIcon(false))
+      }).addTo(map);
+
+      marker.bindPopup(() => buildPopupContent(place), {
+        maxWidth: 360,
+        className: 'uncharted-popup'
+      });
+    });
+
+    function showSavedHint(placeId) {
+      const hint = document.querySelector(`.popup-saved-hint[data-place-id="${placeId}"]`);
+      if (hint) {
+        hint.classList.add('visible');
+        setTimeout(() => hint.classList.remove('visible'), 1500);
+      }
+    }
+
+    function savePlaceContent(id, value) {
+      if (!userData.content) userData.content = {};
+      userData.content[id] = value;
+      saveUserData(userData);
+      showSavedHint(id);
+    }
+
+    // Event-Delegation: Orts-Notizen in Popups speichern
+    ['input', 'change', 'blur'].forEach(ev => {
+      document.addEventListener(ev, (e) => {
+        if (e.target.classList.contains('popup-content-input')) {
+          const id = parseInt(e.target.dataset.placeId, 10);
+          if (!isNaN(id)) savePlaceContent(id, e.target.value);
+        }
+      });
+    });
+
+    // Bounds anpassen
+    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+  </script>
+</body>
+</html>
