@@ -313,6 +313,21 @@
       opacity: 1;
     }
 
+    .export-btn {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: rgba(232, 220, 196, 0.95);
+      border: 2px solid var(--accent-rust);
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 1001;
+    }
+
     /* Route line styling */
     .route-line {
       stroke: var(--accent-rust);
@@ -519,6 +534,7 @@
     <h1 class="map-title">Unser Abenteuer ❤️
       <div class="map-subtitle">COSTA RICA 13.03 - 24.03</div>
     </h1>
+    <button class="export-btn" id="exportBtn" title="Notizen herunterladen">📥</button>
     <div class="legend">
       <div class="legend-roadtrip">
         <img src="images/bild-auto.jpg" alt="Unser Roadtrip-Auto" class="legend-car-img">
@@ -533,46 +549,75 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = 'costa-rica-abenteuer-data';
+    let userData = { content: {} };
+    let useApi = false;
 
-    // User-Daten laden
-    function loadUserData() {
+    async function loadUserData() {
+      try {
+        const res = await fetch('/api/notizen');
+        if (res.ok) {
+          useApi = true;
+          return await res.json();
+        }
+      } catch (e) {}
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : { content: {} };
-      } catch (e) {
-        return { content: {} };
-      }
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      try {
+        const res = await fetch('data.json');
+        if (res.ok) return await res.json();
+      } catch (e) {}
+      return { content: {} };
     }
 
-    function saveUserData(data) {
+    async function saveUserData(data) {
+      if (useApi) {
+        try {
+          const res = await fetch('/api/notizen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+          if (res.ok) return;
+        } catch (e) {
+          console.warn('API-Speichern fehlgeschlagen:', e);
+        }
+      }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (e) {
-        console.warn('localStorage nicht verfügbar (z.B. bei file://). Bitte lokalen Server nutzen: python3 -m http.server 8000');
+        console.warn('localStorage nicht verfügbar');
       }
     }
 
-    let userData = loadUserData();
-    // Migration: alte Felder in content zusammenführen
-    if (userData.activities || userData.notes) {
-      userData.content = userData.content || {};
-      [1,2,3,4].forEach(id => {
-        const a = (userData.activities || {})[id];
-        const n = (userData.notes || {})[id];
-        if (a || n) userData.content[id] = [a, n].filter(Boolean).join('\n\n');
-      });
-      delete userData.activities;
-      delete userData.notes;
-      delete userData.links;
-      delete userData.cost;
-      saveUserData(userData);
-    }
-    // Migration: San José zusammengeführt – alte Notizen aus Eintrag 5 in 1 übernehmen
-    if (userData.content && userData.content[5]) {
-      userData.content[1] = [userData.content[1], userData.content[5]].filter(Boolean).join('\n\n');
-      delete userData.content[5];
-      saveUserData(userData);
-    }
+    (async function init() {
+      userData = await loadUserData();
+      if (!userData || typeof userData !== 'object') userData = { content: {} };
+      if (!userData.content) userData.content = {};
+
+      if (userData.activities || userData.notes) {
+        [1,2,3,4].forEach(id => {
+          const a = (userData.activities || {})[id];
+          const n = (userData.notes || {})[id];
+          if (a || n) userData.content[id] = [a, n].filter(Boolean).join('\n\n');
+        });
+        delete userData.activities;
+        delete userData.notes;
+        delete userData.links;
+        delete userData.cost;
+        await saveUserData(userData);
+      }
+      if (userData.content && userData.content[5]) {
+        userData.content[1] = [userData.content[1], userData.content[5]].filter(Boolean).join('\n\n');
+        delete userData.content[5];
+        await saveUserData(userData);
+      }
+
+      runMap();
+    })();
+
+    function runMap() {
 
     // Reisedaten
     const tripData = [
@@ -760,6 +805,14 @@
 
     // Bounds anpassen
     map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(userData, null, 2));
+      a.download = 'data.json';
+      a.click();
+    });
+    }
   </script>
 </body>
 </html>

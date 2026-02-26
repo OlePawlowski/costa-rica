@@ -28,4 +28,16 @@ Dann im Browser: `http://localhost:8000`
 ## Eigene Bilder
 
 Die Bilder kommen von Unsplash. Für eigene Fotos: Nach der Reise die URLs in `index.html` im Objekt `images` anpassen.
-# costa-rica
+
+## Notizen (Vercel)
+
+**Mit Vercel:** Notizen werden in `data.json` im Repo gespeichert – global, von jedem Gerät.
+
+**Einrichtung (einmalig):**
+1. Repo bei [Vercel](https://vercel.com) importieren & deployen
+2. **Settings** → **Environment Variables**:
+   - `GITHUB_TOKEN`: [Personal Access Token](https://github.com/settings/tokens) mit `repo`-Berechtigung
+   - `GITHUB_REPO`: `dein-username/dein-repo`
+3. Neu deployen
+
+**Ohne Vercel:** Notizen nur lokal (localStorage). Export über 📥 für Backup.
