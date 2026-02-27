@@ -523,6 +523,21 @@
         font-size: 0.85rem;
       }
     }
+
+    /* Safari Mobile: Legende mit position:fixed aus Stacking-Context-Problemen holen */
+    @supports (-webkit-touch-callout: none) {
+      @media (max-width: 768px) {
+        .legend {
+          position: fixed !important;
+          bottom: max(16px, env(safe-area-inset-bottom)) !important;
+          left: max(12px, env(safe-area-inset-left)) !important;
+          right: max(12px, env(safe-area-inset-right)) !important;
+          z-index: 99999 !important;
+          -webkit-transform: translate3d(0, 0, 0);
+          transform: translate3d(0, 0, 0);
+        }
+      }
+    }
   </style>
 </head>
 <body>
@@ -641,7 +656,7 @@
         lat: 10.4678,
         lng: -84.6421,
         image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/28/4a/ca/caption.jpg?w=1200&h=-1&s=1',
-        activities: 'Tag 2: Ankunft, Hot Springs am Abend. Tag 3: Hängebrücken, Regenwald-Walk, Night Walk. Tag 4: La Fortuna Waterfall.',
+        activities: 'Tag 2: Ankunft, Hot Springs am Abend. Tag 3: Hängebrücken, Regenwald-Walk, Night Walk. Tag 4: La Fortuna Waterfall, danach Anreise nach Monteverde.',
         distance: 'Von San José: ca. 130 km (2–2,5h)',
         links: [
           { text: 'Airbnb', url: 'https://www.airbnb.com/rooms/1549668354400285667' }
@@ -652,13 +667,13 @@
       },
       {
         id: 3,
-        day: 'Tag 5–6',
+        day: 'Tag 4–6',
         title: 'Monteverde / Santa Elena',
         subtitle: 'Nebelwald & Abenteuer',
         lat: 10.3025,
         lng: -84.8199,
         image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/33/fe/af/playa-samara.jpg?w=1200&h=700&s=1',
-        activities: 'Tag 5: Anreise, Sunset Viewpoints, Stellas Cafe. Tag 6: Hängebrücken & Zipline, Ficus la Raiz, Colibri Cafe.',
+        activities: 'Tag 4: Ankunft am Abend (von La Fortuna). Tag 5: Sunset Viewpoints, Stellas Cafe. Tag 6: Hängebrücken & Zipline, Ficus la Raiz, Colibri Cafe – danach Anreise nach Sámara.',
         distance: 'Von La Fortuna: ca. 110 km (3–3,5h)',
         links: [
           { text: 'Zipline Tour', url: 'https://www.getyourguide.com/monteverde-l2135/monteverde-thrilling-zip-line-canopy-tour-t756509/' },
@@ -670,13 +685,13 @@
       },
       {
         id: 4,
-        day: 'Tag 7–10',
+        day: 'Tag 6–10',
         title: 'Sámara / Playa Carrillo',
         subtitle: 'Strand & Guanacaste',
         lat: 9.8820,
         lng: -85.5288,
         image: 'https://puravidajr.com/wp-content/uploads/2025/05/SamaraBeach1.jpg',
-        activities: 'Tag 7: Anreise, Strand-Sonnenuntergang. Tag 8–10: Schwimmen, entspannen. Optional: Mangroven-/Kayak-Tour oder Schnorcheln.',
+        activities: 'Tag 6: Ankunft am Abend (von Monteverde). Tag 7–10: Strand, Schwimmen, entspannen. Optional: Mangroven-/Kayak-Tour oder Schnorcheln.',
         distance: 'Von Monteverde: ca. 150 km (2,5–3h)',
         links: [
           { text: 'Airbnb', url: 'https://www.airbnb.com/rooms/1087259001218606500' }
