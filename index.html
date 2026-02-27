@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Unser Abenteuer</title>
+  <title>Costa Rica</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <style>
@@ -363,11 +363,13 @@
       }
 
       .legend {
+        display: flex;
         bottom: max(16px, env(safe-area-inset-bottom));
         left: max(12px, env(safe-area-inset-left));
         right: max(12px, env(safe-area-inset-right));
         padding: 10px 14px;
         font-size: 0.75rem;
+        z-index: 1100;
       }
 
       .legend-roadtrip {
@@ -452,8 +454,10 @@
       }
 
       .legend {
+        display: flex;
         padding: 8px 12px;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+        z-index: 1100;
       }
 
       .legend-roadtrip {
@@ -469,7 +473,7 @@
       }
 
       .legend-title {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
       }
 
       .legend-roadtrip > div {
@@ -478,7 +482,7 @@
       }
 
       .legend-roadtrip > div:last-child > div:last-child {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
         line-height: 1.3;
       }
 
