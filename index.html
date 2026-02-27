@@ -313,6 +313,18 @@
       opacity: 1;
     }
 
+    .sync-status {
+      position: absolute;
+      top: 24px;
+      left: 52px;
+      font-size: 0.7rem;
+      color: var(--ink-faded);
+      z-index: 1001;
+    }
+
+    .sync-status.cloud::after { content: '☁️'; }
+    .sync-status.local::after { content: '📱'; }
+
     .export-btn {
       position: absolute;
       top: 24px;
@@ -535,6 +547,7 @@
       <div class="map-subtitle">COSTA RICA 13.03 - 24.03</div>
     </h1>
     <button class="export-btn" id="exportBtn" title="Notizen herunterladen">📥</button>
+    <span class="sync-status" id="syncStatus" title="Cloud-Sync"></span>
     <div class="legend">
       <div class="legend-roadtrip">
         <img src="images/bild-auto.jpg" alt="Unser Roadtrip-Auto" class="legend-car-img">
@@ -550,45 +563,44 @@
   <script>
     const STORAGE_KEY = 'costa-rica-abenteuer-data';
     let userData = { content: {} };
-    let useApi = false;
 
     async function loadUserData() {
       try {
         const res = await fetch('/api/notizen');
         if (res.ok) {
-          useApi = true;
+          document.getElementById('syncStatus')?.classList.add('cloud');
           return await res.json();
         }
       } catch (e) {}
+      document.getElementById('syncStatus')?.classList.add('local');
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) return JSON.parse(raw);
       } catch (e) {}
       try {
-        const res = await fetch('data.json');
-        if (res.ok) return await res.json();
+        const r = await fetch('data.json');
+        if (r.ok) return await r.json();
       } catch (e) {}
       return { content: {} };
     }
 
     async function saveUserData(data) {
-      if (useApi) {
-        try {
-          const res = await fetch('/api/notizen', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          });
-          if (res.ok) return;
-        } catch (e) {
-          console.warn('API-Speichern fehlgeschlagen:', e);
-        }
-      }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      } catch (e) {
-        console.warn('localStorage nicht verfügbar');
-      }
+      } catch (e) {}
+
+      try {
+        const res = await fetch('/api/notizen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) return;
+        if (res.status !== 503) {
+          const err = await res.json().catch(() => ({}));
+          console.warn('API:', err?.error || res.status);
+        }
+      } catch (e) {}
     }
 
     (async function init() {

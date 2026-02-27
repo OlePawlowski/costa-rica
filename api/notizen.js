@@ -17,48 +17,64 @@ export default async function handler(req, res) {
   const repo = process.env.GITHUB_REPO;
 
   if (!token || !repo) {
-    return res.status(503).json({ error: 'API nicht konfiguriert' });
+    return res.status(503).json({ error: 'API nicht konfiguriert. GITHUB_TOKEN und GITHUB_REPO in Vercel setzen.' });
   }
 
-  const [owner, repoName] = repo.split('/');
+  const [owner, repoName] = repo.split('/').map(s => s.trim());
   if (!owner || !repoName) {
     return res.status(500).json({ error: 'GITHUB_REPO Format: owner/repo' });
   }
 
   const path = 'data.json';
   const url = `https://api.github.com/repos/${owner}/${repoName}/contents/${path}`;
+  const auth = `Bearer ${token}`;
 
   if (req.method === 'GET') {
     try {
       const r = await fetch(url, {
-        headers: { Accept: 'application/vnd.github.raw' },
+        headers: {
+          Accept: 'application/vnd.github.raw',
+          Authorization: auth,
+        },
       });
       if (r.status === 404) return res.json({ content: {} });
-      if (!r.ok) throw new Error(r.statusText);
+      if (!r.ok) {
+        const err = await r.text();
+        throw new Error(err || `GitHub ${r.status}`);
+      }
       const text = await r.text();
       const data = text ? JSON.parse(text) : { content: {} };
       return res.json(data);
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: 'Laden: ' + e.message });
     }
   }
 
   if (req.method === 'POST') {
     try {
-      const getR = await fetch(url, { headers: { Authorization: `token ${token}` } });
+      let body = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch (_) {
+          body = { content: {} };
+        }
+      }
+      if (!body || typeof body !== 'object') body = { content: {} };
+
+      const getR = await fetch(url, { headers: { Authorization: auth } });
       let sha = null;
       if (getR.ok) {
         const file = await getR.json();
         sha = file.sha;
       }
 
-      const body = typeof req.body === 'object' ? req.body : { content: {} };
       const content = Buffer.from(JSON.stringify(body, null, 2)).toString('base64');
 
       const putR = await fetch(url, {
         method: 'PUT',
         headers: {
-          Authorization: `token ${token}`,
+          Authorization: auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -69,12 +85,16 @@ export default async function handler(req, res) {
       });
 
       if (!putR.ok) {
-        const err = await putR.json();
-        throw new Error(err.message || putR.statusText);
+        let errMsg = putR.statusText;
+        try {
+          const err = await putR.json();
+          errMsg = err.message || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
       }
       return res.json({ ok: true });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: 'Speichern: ' + e.message });
     }
   }
 

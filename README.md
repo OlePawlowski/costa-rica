@@ -37,7 +37,9 @@ Die Bilder kommen von Unsplash. Für eigene Fotos: Nach der Reise die URLs in `i
 1. Repo bei [Vercel](https://vercel.com) importieren & deployen
 2. **Settings** → **Environment Variables**:
    - `GITHUB_TOKEN`: [Personal Access Token](https://github.com/settings/tokens) mit `repo`-Berechtigung
-   - `GITHUB_REPO`: `dein-username/dein-repo`
-3. Neu deployen
+   - `GITHUB_REPO`: `dein-username/dein-repo` (ohne Leerzeichen!)
+3. **Redeploy** (Deployments → ⋮ → Redeploy)
+
+**Prüfen:** Browser-Konsole (F12) öffnen – bei API-Fehlern erscheint eine Meldung.
 
 **Ohne Vercel:** Notizen nur lokal (localStorage). Export über 📥 für Backup.
