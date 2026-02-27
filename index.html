@@ -316,7 +316,7 @@
     .sync-status {
       position: absolute;
       top: 24px;
-      left: 52px;
+      left: 24px;
       font-size: 0.7rem;
       color: var(--ink-faded);
       z-index: 1001;
@@ -324,21 +324,6 @@
 
     .sync-status.cloud::after { content: '☁️'; }
     .sync-status.local::after { content: '📱'; }
-
-    .export-btn {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      background: rgba(232, 220, 196, 0.95);
-      border: 2px solid var(--accent-rust);
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      z-index: 1001;
-    }
 
     /* Route line styling */
     .route-line {
@@ -546,7 +531,6 @@
     <h1 class="map-title">Unser Abenteuer ❤️
       <div class="map-subtitle">COSTA RICA 13.03 - 24.03</div>
     </h1>
-    <button class="export-btn" id="exportBtn" title="Notizen herunterladen">📥</button>
     <span class="sync-status" id="syncStatus" title="Cloud-Sync"></span>
     <div class="legend">
       <div class="legend-roadtrip">
@@ -779,6 +763,7 @@
     }
 
     // Marker und Popups (Inhalt bei jedem Öffnen neu laden, damit gespeicherte Notizen erscheinen)
+    let firstMarker = null;
     tripData.forEach((place, i) => {
       const marker = L.marker([place.lat, place.lng], {
         icon: LeafletDivIcon(createCustomIcon(false))
@@ -788,6 +773,7 @@
         maxWidth: 360,
         className: 'uncharted-popup'
       });
+      if (i === 0) firstMarker = marker;
     });
 
     function showSavedHint(placeId) {
@@ -818,12 +804,8 @@
     // Bounds anpassen
     map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
 
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(userData, null, 2));
-      a.download = 'data.json';
-      a.click();
-    });
+    // San José Popup standardmäßig öffnen (zeigt, dass Pins anklickbar sind)
+    if (firstMarker) setTimeout(() => firstMarker.openPopup(), 500);
     }
   </script>
 </body>

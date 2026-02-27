@@ -42,4 +42,4 @@ Die Bilder kommen von Unsplash. Für eigene Fotos: Nach der Reise die URLs in `i
 
 **Prüfen:** Browser-Konsole (F12) öffnen – bei API-Fehlern erscheint eine Meldung.
 
-**Ohne Vercel:** Notizen nur lokal (localStorage). Export über 📥 für Backup.
+**Ohne Vercel:** Notizen nur lokal (localStorage).
